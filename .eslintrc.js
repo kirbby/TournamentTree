@@ -3,12 +3,7 @@ module.exports = {
     env: {
         node: true,
     },
-    plugins: [
-        "es-beautifier",
-        "prettier",
-        "tailwindcss",
-        "import",
-    ],
+    plugins: ["es-beautifier", "prettier", "tailwindcss", "import"],
     extends: [
         "plugin:vue/vue3-recommended",
         "plugin:es-beautifier/standard",
@@ -32,11 +27,11 @@ module.exports = {
         "no-debugger": process.env.NODE_ENV === "production" ? "warn" : "off",
         "comma-dangle": ["error", "only-multiline"],
         "linebreak-style": "off",
-        "indent": ["error", 4],
-        "vue/script-indent": ["off", 4, { "baseIndent": 0 }],
-        "vue/html-indent": ["error", 4, { "baseIndent": 0 }],
-        "semi": [2, "always"],
-        "quotes": [
+        indent: ["error", 4],
+        "vue/script-indent": ["off", 4, { baseIndent: 0 }],
+        "vue/html-indent": ["error", 4, { baseIndent: 0 }],
+        semi: [2, "always"],
+        quotes: [
             2,
             "double",
             {
@@ -48,13 +43,13 @@ module.exports = {
         "import/order": [
             "error",
             {
-                "groups": [
+                groups: [
                     "builtin",
                     "external",
                     "internal",
                     "parent",
                     "sibling",
-                    "index"
+                    "index",
                 ],
                 "newlines-between": "never",
             },
@@ -81,23 +76,24 @@ module.exports = {
                 "import/order": [
                     "error",
                     {
-                        "groups": [
+                        groups: [
                             "builtin",
                             "external",
                             "internal",
                             "parent",
                             "sibling",
-                            "index"
-                        ]
-                    }],
-                "import/newline-after-import": "error"
-            }
-        }
+                            "index",
+                        ],
+                    },
+                ],
+                "import/newline-after-import": "error",
+            },
+        },
     ],
     settings: {
         "import/resolver": {
-            "node": true,
-            "typescript": true,
+            node: true,
+            typescript: true,
         },
     },
 };

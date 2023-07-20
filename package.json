@@ -1,8 +1,7 @@
 {
   "name": "tournament-tree",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "version": "0.0.1",
   "scripts": {
     "dev": "pnpm tsc && vite",
     "tsc": "vue-tsc --noEmit",
@@ -22,6 +21,7 @@
     "vue-toastification": "2.0.0-rc.5"
   },
   "devDependencies": {
+    "@iconify-json/mdi": "^1.1.53",
     "@tailwindcss/forms": "^0.5.4",
     "@types/node": "^20.4.2",
     "@typescript-eslint/eslint-plugin": "^6.1.0",
@@ -40,7 +40,7 @@
     "postcss": "^8.4.26",
     "supabase": "^1.77.9",
     "tailwindcss": "^3.3.3",
-    "typescript": "^5.1.6",    
+    "typescript": "^5.1.6",
     "unplugin-icons": "^0.16.5",
     "unplugin-vue-components": "^0.25.1",
     "vite": "^4.4.4",
