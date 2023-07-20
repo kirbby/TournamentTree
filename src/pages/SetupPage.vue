@@ -37,12 +37,40 @@
             </li>
         </ul>
     </div>
+    <div class="flex flex-row">
+        <router-link
+            v-if="isTournamentStarted"
+            to="/tournament"
+            class="flex items-center justify-center rounded bg-blue-500 p-3 text-white"
+        >
+            To Tournament
+        </router-link>
+        <button
+            v-else
+            type="button"
+            class="flex items-center justify-center rounded bg-blue-500 p-3 text-white"
+            title="Stop Tournament"
+            @click="stopTournament"
+        >
+            Stop
+        </button>
+        <button
+            type="button"
+            class="flex items-center justify-center rounded bg-blue-500 p-3 text-white"
+            @click="startTournament"
+        >
+            Start Tournament
+        </button>
+    </div>
 </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { useTournamentStore } from "@/stores/TournamentStore";
 
+const { isTournamentStarted, startTournament: startTournamentStore, stopTournament: stopTournamentStore } = useTournamentStore();
 const players = ref<string[]>([]);
 const playerName = ref("");
 const playerNameInput = ref<HTMLInputElement | null>(null);
@@ -59,6 +87,17 @@ function addPlayer(event: Event) {
 
 function deletePlayer(index: number) {
     players.value.splice(index, 1);
+}
+
+function startTournament() {
+    startTournamentStore();
+    useRouter().push("/tournament");
+}
+
+function stopTournament() {
+    if (window.confirm("Are you sure you want to stop the tournament?")) {
+        stopTournamentStore();
+    }
 }
 </script>
 
