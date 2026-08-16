@@ -2,6 +2,11 @@
 
 All notable changes are documented here. Versions follow semantic versioning.
 
+## 0.2.2 - 2026-08-16
+
+- Limited save notifications to one visible toast at a time.
+- Kept the player-name field focused after pressing Enter so organizers can add players continuously.
+
 ## 0.2.1 - 2026-08-16
 
 - Fixed older offline drafts without a saved last-place setting to display their compatible standard-placement mode correctly.

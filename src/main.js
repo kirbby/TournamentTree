@@ -24,6 +24,7 @@ import {
   syncTournament,
 } from "./tournament-store.js";
 import { isBackendConfigured, supabase } from "./supabase.js";
+import { focusElement, replaceVisibleToast } from "./ui-utils.js";
 
 registerSW({ immediate: true });
 
@@ -33,6 +34,7 @@ let realtimeChannel = null;
 let refreshTimer = null;
 const syncingIds = new Set();
 let dashboardSyncing = false;
+let nextTournamentFocus = null;
 
 const escapeHtml = (value) => String(value ?? "")
   .replaceAll("&", "&amp;")
@@ -68,7 +70,7 @@ function toast(message, kind = "info") {
   const color = kind === "error" ? "bg-red-700" : kind === "success" ? "bg-green-700" : "bg-slate-900";
   element.className = `toast rounded-lg ${color} px-4 py-3 text-sm text-white shadow-lg`;
   element.textContent = message;
-  container.append(element);
+  replaceVisibleToast(container, element);
   setTimeout(() => element.remove(), 4500);
 }
 
@@ -499,7 +501,7 @@ function activeEditor(state, { readOnly = false } = {}) {
 async function commitAndSync(id, operation) {
   const result = await mutateLocalTournament(id, operation, { actorKind: "admin", actorId: session?.user?.id ?? "offline-admin" });
   toast(navigator.onLine ? "Saved locally; syncing…" : "Saved on this device for later sync.", "success");
-  renderAdminTournament(id);
+  await renderAdminTournament(id);
   return result;
 }
 
@@ -572,6 +574,10 @@ function resultDialog(state, match, impact = [], { lastPlace = false } = {}) {
 }
 
 async function renderAdminTournament(id) {
+  const playerInputSelector = "#add-player input[name=name]";
+  const focusedBeforeRender = document.activeElement?.matches?.(playerInputSelector) ? playerInputSelector : null;
+  const focusAfterRender = nextTournamentFocus ?? focusedBeforeRender;
+  nextTournamentFocus = null;
   session = await getSession();
   if (!session) return loginView("Sign in online once before managing tournaments offline.");
   let record = await localTournament(id);
@@ -593,11 +599,13 @@ async function renderAdminTournament(id) {
     renderBracket(state);
     renderLastPlaceBracket(state);
   }
+  focusElement(document, focusAfterRender);
 
   document.querySelector("#add-player")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
-    try { await commitAndSync(id, { type: "add_player", payload: { name: values.get("name") } }); } catch (error) { toast(error.message, "error"); }
+    nextTournamentFocus = playerInputSelector;
+    try { await commitAndSync(id, { type: "add_player", payload: { name: values.get("name") } }); } catch (error) { nextTournamentFocus = null; toast(error.message, "error"); }
   });
   document.querySelector("#players-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
