@@ -74,4 +74,4 @@ Give an external AI only this URL, the [OpenAPI document](docs/openapi.yaml), th
 - `docs/` — architecture, configuration, operations, OpenAPI, and AI usage.
 - `public/` — locally served PWA assets.
 
-Version: `0.1.0`.
+Version: `0.1.1`.

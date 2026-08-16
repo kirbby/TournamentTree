@@ -2,6 +2,10 @@
 
 All notable changes are documented here. Versions follow semantic versioning.
 
+## 0.1.1 - 2026-08-16
+
+- Fixed Supabase Edge Function deployment to pass the shared Deno import map to the remote bundler.
+
 ## 0.1.0 - 2026-08-16
 
 - Rebuilt TournamentTree as a vanilla-JavaScript offline-first PWA.
