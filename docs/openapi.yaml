@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: TournamentTree API
-  version: 0.1.1
+  version: 0.1.2
   description: Offline-aware double-elimination tournament management API. Mutation requests require a scoped token, a UUID Idempotency-Key, and—except creation—the current If-Match revision.
   license: { name: Proprietary }
 servers:
