@@ -75,4 +75,4 @@ The live OpenAPI 3.1 document is available at `${API_BASE}/openapi.yaml` (for ex
 - `docs/` — architecture, configuration, operations, OpenAPI, and AI usage.
 - `public/` — locally served PWA assets.
 
-Version: `0.2.0`.
+Version: `0.2.1`.

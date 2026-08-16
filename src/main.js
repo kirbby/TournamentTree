@@ -449,6 +449,7 @@ function placementPreview(state) {
 }
 
 function draftEditor(state) {
+  const lastPlaceMode = state.lastPlaceMode ?? "standard";
   return `<section class="card">
     <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 class="text-xl font-bold">Players</h2><p class="mt-1 text-sm text-slate-500">${state.players.length}/32 · Seed any consecutive top players; everyone else is shuffled.</p></div><button class="btn-secondary" data-action="reroll" ${state.players.length < 2 ? "disabled" : ""}>${icon("refresh")} Reroll unseeded</button></div>
     <form id="add-player" class="mt-5 flex gap-2"><input class="field" name="name" placeholder="Player name" maxlength="80" required><button class="btn-primary" ${state.players.length >= 32 ? "disabled" : ""}>${icon("add")} Add</button></form>
@@ -460,8 +461,8 @@ function draftEditor(state) {
     <fieldset class="mt-6 border-t border-slate-200 pt-5">
       <legend class="font-bold">Last-place result</legend>
       <div class="mt-3 grid gap-3 sm:grid-cols-2">
-        <label class="rounded-xl border-2 ${state.lastPlaceMode !== "standard" ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"} p-4"><span class="flex items-start gap-3"><input class="mt-1" type="radio" name="last-place-mode" value="fair" ${state.lastPlaceMode !== "standard" ? "checked" : ""}><span><strong class="block">Fair playoff</strong><span class="mt-1 block text-sm text-slate-600">Players eliminated without a real win enter an automatic loser event. Byes do not count as wins.</span></span></span></label>
-        <label class="rounded-xl border-2 ${state.lastPlaceMode === "standard" ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"} p-4"><span class="flex items-start gap-3"><input class="mt-1" type="radio" name="last-place-mode" value="standard" ${state.lastPlaceMode === "standard" ? "checked" : ""}><span><strong class="block">Standard placement</strong><span class="mt-1 block text-sm text-slate-600">Use only the normal double-elimination standings with no separate loser playoff.</span></span></span></label>
+        <label class="rounded-xl border-2 ${lastPlaceMode === "fair" ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"} p-4"><span class="flex items-start gap-3"><input class="mt-1" type="radio" name="last-place-mode" value="fair" ${lastPlaceMode === "fair" ? "checked" : ""}><span><strong class="block">Fair playoff</strong><span class="mt-1 block text-sm text-slate-600">Players eliminated without a real win enter an automatic loser event. Byes do not count as wins.</span></span></span></label>
+        <label class="rounded-xl border-2 ${lastPlaceMode === "standard" ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"} p-4"><span class="flex items-start gap-3"><input class="mt-1" type="radio" name="last-place-mode" value="standard" ${lastPlaceMode === "standard" ? "checked" : ""}><span><strong class="block">Standard placement</strong><span class="mt-1 block text-sm text-slate-600">Use only the normal double-elimination standings with no separate loser playoff.</span></span></span></label>
       </div>
     </fieldset>
     <div class="mt-6 border-t border-slate-200 pt-5"><button class="btn-primary" data-action="start" ${state.players.length < 2 ? "disabled" : ""}>Start tournament</button></div>

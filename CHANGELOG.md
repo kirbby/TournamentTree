@@ -2,6 +2,10 @@
 
 All notable changes are documented here. Versions follow semantic versioning.
 
+## 0.2.1 - 2026-08-16
+
+- Fixed older offline drafts without a saved last-place setting to display their compatible standard-placement mode correctly.
+
 ## 0.2.0 - 2026-08-16
 
 - Added draft selection between fair last-place playoffs and standard placement.

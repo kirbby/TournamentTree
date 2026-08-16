@@ -154,6 +154,15 @@ describe("fair last-place playoff", () => {
     expect(state.status).toBe("completed");
   });
 
+  it("keeps pre-feature snapshots on compatible standard placement", async () => {
+    let state = await draftWithPlayers(4);
+    delete state.lastPlaceMode;
+    delete state.lastPlace;
+    state = (await applyOperation(state, { type: "start", payload: {} })).state;
+    expect(state.lastPlaceMode).toBe("standard");
+    expect(state.lastPlace.status).toBe("disabled");
+  });
+
   it.each([
     [4, 1, "automatic"],
     [8, 2, "single_match"],
