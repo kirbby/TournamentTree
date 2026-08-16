@@ -62,7 +62,7 @@ The deployed base URL is:
 https://PROJECT_REF.supabase.co/functions/v1/tournament-api/v1
 ```
 
-Give an external AI only this URL, the [OpenAPI document](docs/openapi.yaml), the [AI API guide](docs/AI_API_GUIDE.md), and a scoped token created in the admin UI. Do not give it a Supabase secret key.
+The live OpenAPI 3.1 document is available at `${API_BASE}/openapi.yaml` (for example, `https://PROJECT_REF.supabase.co/functions/v1/tournament-api/v1/openapi.yaml`). Give an external AI this URL, the [AI API guide](docs/AI_API_GUIDE.md), and a scoped token created in the admin UI. Do not give it a Supabase secret key.
 
 ## Repository map
 

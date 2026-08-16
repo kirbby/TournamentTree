@@ -22,6 +22,7 @@ const serviceKey = legacyServiceKey || (secretKeys ? Object.values(JSON.parse(se
 const admin = createClient(supabaseUrl, serviceKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+const openApiDocument = await Deno.readTextFile(new URL("./openapi.yaml", import.meta.url));
 
 type Actor = {
   kind: "admin" | "api_token";
@@ -234,6 +235,16 @@ async function handle(request: Request) {
   const apiVersionIndex = allParts.lastIndexOf("v1");
   const parts = allParts.slice(apiVersionIndex + 1);
   const method = request.method.toUpperCase();
+
+  if (parts[0] === "openapi.yaml" && method === "GET") {
+    return new Response(openApiDocument, {
+      headers: {
+        ...corsHeaders,
+        "Cache-Control": "public, max-age=300",
+        "Content-Type": "application/vnd.oai.openapi;version=3.1",
+      },
+    });
+  }
 
   if (parts[0] === "health" && method === "GET") {
     return json({ status: "ok", service: "tournament-api", version: 1 });

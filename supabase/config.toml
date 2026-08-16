@@ -30,4 +30,5 @@ enroll_enabled = true
 verify_enabled = true
 
 [functions.tournament-api]
+static_files = [ "./functions/tournament-api/openapi.yaml" ]
 verify_jwt = false

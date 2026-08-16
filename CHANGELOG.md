@@ -2,6 +2,10 @@
 
 All notable changes are documented here. Versions follow semantic versioning.
 
+## 0.1.3 - 2026-08-16
+
+- Added a public API endpoint for downloading the OpenAPI 3.1 specification.
+
 ## 0.1.2 - 2026-08-16
 
 - Fixed administrator password login by enabling the email Auth provider while keeping public signup disabled.
