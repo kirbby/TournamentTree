@@ -2,6 +2,13 @@
 
 All notable changes are documented here. Versions follow semantic versioning.
 
+## 0.2.0 - 2026-08-16
+
+- Added draft selection between fair last-place playoffs and standard placement.
+- Added automatic zero-win candidate detection that ignores byes.
+- Added the one-candidate, single-match, three-player round-robin, and complete mirrored double-elimination loser formats.
+- Added a Grand Loser Final with conditional reset, shared round-robin last places, public/admin displays, offline mutations, and external API endpoints.
+
 ## 0.1.3 - 2026-08-16
 
 - Added a public API endpoint for downloading the OpenAPI 3.1 specification.

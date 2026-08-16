@@ -6,7 +6,11 @@ import { icon, mountIcons } from "./icons.js";
 import {
   MATCH_STATUS,
   correctionImpact,
+  lastPlaceCorrectionImpact,
+  lastPlaceEligibility,
+  lastPlacePlayerId,
   playerNameForBracketId,
+  readyLastPlaceMatches,
 } from "../supabase/functions/_shared/tournament-engine.js";
 import { tournamentApi } from "./api.js";
 import { operationCount } from "./local-db.js";
@@ -128,6 +132,7 @@ function tournamentCard(record, admin = false) {
     </div>
     ${record.pendingCount ? `<p class="mt-3 text-xs font-semibold text-amber-700">${record.pendingCount} change${record.pendingCount === 1 ? "" : "s"} waiting to sync</p>` : ""}
     ${state.championId ? `<p class="mt-3 text-sm"><span class="text-slate-500">Champion:</span> <strong>${escapeHtml(state.players.find((player) => player.id === state.championId)?.name)}</strong></p>` : ""}
+    ${state.lastPlace?.lastPlaceIds?.length ? `<p class="mt-1 text-sm"><span class="text-slate-500">Last place:</span> <strong>${state.lastPlace.lastPlaceIds.map((id) => escapeHtml(state.players.find((player) => player.id === id)?.name)).join(" & ")}</strong></p>` : ""}
   </a>`;
 }
 
@@ -168,19 +173,33 @@ function matchLabel(state, match) {
   return round?.number === 2 ? "Grand Final Reset" : "Grand Final";
 }
 
-function renderBracket(state, selector = "#bracket-viewer") {
-  if (!state.bracket || !window.bracketsViewer) return;
+function relabelLastPlaceBracket(target) {
+  const sections = target.querySelectorAll("section.bracket");
+  if (sections[0]?.querySelector("h2")) sections[0].querySelector("h2").textContent = "Danger Bracket";
+  if (sections[1]?.querySelector("h2")) sections[1].querySelector("h2").textContent = "Safety Bracket";
+  for (const element of target.querySelectorAll("h3, .opponents > span, .participant .name.hint")) {
+    element.textContent = element.textContent
+      .replaceAll("Loser of WB", "Winner of Danger")
+      .replaceAll("Winner of LB", "Loser of Safety")
+      .replaceAll("Grand Final", "Grand Loser Final")
+      .replaceAll("WB ", "Danger ")
+      .replaceAll("LB ", "Safety ");
+  }
+}
+
+function renderBracketData(bracket, selector, { lastPlace = false } = {}) {
+  if (!bracket || !window.bracketsViewer) return;
   requestAnimationFrame(() => {
     const target = document.querySelector(selector);
     if (!target) return;
     try {
       window.bracketsViewer.render({
-        stages: state.bracket.stage,
-        groups: state.bracket.group,
-        rounds: state.bracket.round,
-        matches: state.bracket.match,
-        matchGames: state.bracket.match_game,
-        participants: state.bracket.participant,
+        stages: bracket.stage,
+        groups: bracket.group,
+        rounds: bracket.round,
+        matches: bracket.match,
+        matchGames: bracket.match_game,
+        participants: bracket.participant,
       }, {
         selector,
         clear: true,
@@ -188,10 +207,19 @@ function renderBracket(state, selector = "#bracket-viewer") {
         separatedChildCountLabel: true,
         showSlotsOrigin: true,
       });
+      if (lastPlace) relabelLastPlaceBracket(target);
     } catch (error) {
       target.innerHTML = `<p class="p-4 text-red-700">Could not render bracket: ${escapeHtml(error.message)}</p>`;
     }
   });
+}
+
+function renderBracket(state, selector = "#bracket-viewer") {
+  renderBracketData(state.bracket, selector);
+}
+
+function renderLastPlaceBracket(state) {
+  renderBracketData(state.lastPlace?.bracket, "#last-place-bracket", { lastPlace: true });
 }
 
 function standingsHtml(state) {
@@ -199,6 +227,83 @@ function standingsHtml(state) {
   return `<section class="card"><h2 class="text-xl font-bold">Final standings</h2><ol class="mt-4 divide-y divide-slate-100">
     ${state.standings.map((item) => `<li class="flex items-center gap-4 py-3"><span class="w-8 font-black text-slate-400">${item.rank}</span><strong>${escapeHtml(item.name)}</strong></li>`).join("")}
   </ol></section>`;
+}
+
+function playerById(state, playerId) {
+  return state.players.find((player) => player.id === playerId) ?? null;
+}
+
+function lastPlaceNames(state) {
+  return (state.lastPlace?.lastPlaceIds ?? []).map((playerId) => playerById(state, playerId)?.name).filter(Boolean);
+}
+
+function lastPlaceFormatLabel(format) {
+  return {
+    automatic: "Automatic",
+    single_match: "Single match",
+    round_robin: "Round robin",
+    reverse_double_elimination: "Mirrored double elimination",
+  }[format] ?? "Waiting for candidates";
+}
+
+function lastPlaceMatchPlayers(state, match) {
+  if (state.lastPlace?.format === "reverse_double_elimination") {
+    return [
+      playerById(state, lastPlacePlayerId(state, match.opponent1?.id)),
+      playerById(state, lastPlacePlayerId(state, match.opponent2?.id)),
+    ];
+  }
+  return [playerById(state, match.opponent1?.id), playerById(state, match.opponent2?.id)];
+}
+
+function lastPlaceMatchLabel(state, match) {
+  if (state.lastPlace?.format === "single_match") return "Last-place final";
+  if (state.lastPlace?.format === "round_robin") return `Round robin · Match ${match.number}`;
+  const round = state.lastPlace?.bracket?.round.find((item) => item.id === match.round_id);
+  const group = state.lastPlace?.bracket?.group.find((item) => item.id === round?.group_id);
+  if (group?.number === 1) return `Danger bracket R${round.number} · Match ${match.number}`;
+  if (group?.number === 2) return `Safety bracket R${round.number} · Match ${match.number}`;
+  return round?.number === 2 ? "Grand Loser Final Reset" : "Grand Loser Final";
+}
+
+function lastPlaceMatchCard(state, match, { completed = false, readOnly = false } = {}) {
+  const [player1, player2] = lastPlaceMatchPlayers(state, match);
+  const winnerId = state.lastPlace.format === "reverse_double_elimination"
+    ? match.actualWinnerId
+    : match.opponent1?.result === "win" ? match.opponent1.id : match.opponent2?.result === "win" ? match.opponent2.id : null;
+  const winner = playerById(state, winnerId);
+  return `<article class="rounded-xl border ${completed ? "border-slate-200" : "border-red-200 bg-red-50/40"} p-4">
+    <div class="flex items-start justify-between gap-3"><p class="text-xs font-bold uppercase tracking-wide text-slate-500">${escapeHtml(lastPlaceMatchLabel(state, match))}</p><span class="badge ${completed ? "bg-slate-100 text-slate-600" : "bg-red-100 text-red-700"}">${completed ? "Complete" : "Ready"}</span></div>
+    <div class="mt-3 grid grid-cols-[1fr_auto] gap-2 text-sm"><strong>${escapeHtml(player1?.name ?? "TBD")}</strong><span>${match.opponent1?.score ?? "—"}</span><strong>${escapeHtml(player2?.name ?? "TBD")}</strong><span>${match.opponent2?.score ?? "—"}</span></div>
+    ${winner ? `<p class="mt-3 text-sm text-green-700">Match winner: <strong>${escapeHtml(winner.name)}</strong></p>` : ""}
+    ${state.lastPlace.format === "reverse_double_elimination" ? `<p class="mt-2 text-xs font-semibold text-red-700">The match loser advances toward the Grand Loser Final.</p>` : ""}
+    ${readOnly ? "" : `<div class="mt-4 flex gap-2"><button class="btn-${completed ? "secondary" : "primary"}" data-action="edit-last-place-result" data-match="${match.id}">${completed ? "Correct result" : "Enter result"}</button>${completed ? `<button class="btn-secondary text-red-700" data-action="clear-last-place-result" data-match="${match.id}">${icon("delete")} Clear</button>` : ""}</div>`}
+  </article>`;
+}
+
+function lastPlaceSection(state, { readOnly = false } = {}) {
+  if ((state.lastPlaceMode ?? "standard") === "standard") return "";
+  const lastPlace = state.lastPlace;
+  const candidates = (lastPlace?.candidatePlayerIds ?? []).map((id) => playerById(state, id)?.name).filter(Boolean);
+  if (!lastPlace || lastPlace.status === "pending") {
+    const eligibility = lastPlaceEligibility(state);
+    const current = eligibility.candidatePlayerIds.map((id) => playerById(state, id)?.name).filter(Boolean);
+    return `<section class="mt-8 rounded-xl border-2 border-dashed border-red-200 bg-red-50/40 p-6">
+      <p class="text-sm font-bold uppercase tracking-widest text-red-700">Fair last-place playoff</p>
+      <h2 class="mt-1 text-2xl font-black">Candidates are still being determined</h2>
+      <p class="mt-2 text-sm text-slate-600">${current.length ? `${current.length} player${current.length === 1 ? " currently qualifies" : "s currently qualify"}.` : "No player has been eliminated without a real match win yet."} ${eligibility.unresolvedPlayerIds.length} player${eligibility.unresolvedPlayerIds.length === 1 ? " is" : "s are"} still without a real win and could qualify. Byes do not count.</p>
+    </section>`;
+  }
+  const names = lastPlaceNames(state);
+  const ready = readyLastPlaceMatches(state);
+  const allMatches = lastPlace.format === "reverse_double_elimination" ? lastPlace.bracket.match : lastPlace.matches;
+  const completed = allMatches.filter((match) => match.status >= MATCH_STATUS.completed && match.opponent1?.id != null && match.opponent2?.id != null).sort((a, b) => String(b.id).localeCompare(String(a.id), undefined, { numeric: true }));
+  return `<section class="mt-8 rounded-2xl border-2 border-red-300 bg-gradient-to-br from-red-50 to-amber-50 p-5 sm:p-7">
+    <div class="flex flex-wrap items-start justify-between gap-4"><div><p class="text-sm font-bold uppercase tracking-widest text-red-700">Grand loser event</p><h2 class="mt-1 text-2xl font-black">Fair last-place playoff</h2><p class="mt-2 text-sm text-slate-600">${escapeHtml(lastPlaceFormatLabel(lastPlace.format))} · ${candidates.map(escapeHtml).join(", ")}</p></div><span class="badge ${lastPlace.status === "completed" ? "bg-red-700 text-white" : "bg-red-100 text-red-800"}">${lastPlace.status}</span></div>
+    ${names.length ? `<div class="mt-5 rounded-xl bg-red-700 p-5 text-white"><p class="text-xs font-bold uppercase tracking-widest text-red-100">${names.length > 1 ? "Shared last place" : "Last place"}</p><p class="mt-1 text-3xl font-black">${names.map(escapeHtml).join(" & ")}</p></div>` : ""}
+    ${lastPlace.status !== "completed" || completed.length ? `<div class="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]"><div><div class="flex items-center justify-between"><h3 class="text-lg font-bold">Ready loser matches</h3><span class="badge bg-red-100 text-red-700">${ready.length}</span></div><div class="mt-3 grid gap-4 md:grid-cols-2">${ready.length ? ready.map((match) => lastPlaceMatchCard(state, match, { readOnly })).join("") : `<div class="card col-span-full text-slate-500">No loser match is currently ready.</div>`}</div></div><aside><h3 class="text-lg font-bold">Completed</h3><div class="mt-3 max-h-[32rem] space-y-3 overflow-y-auto">${completed.length ? completed.map((match) => lastPlaceMatchCard(state, match, { completed: true, readOnly })).join("") : `<div class="card text-slate-500">No loser results yet.</div>`}</div></aside></div>` : ""}
+    ${lastPlace.format === "reverse_double_elimination" ? `<div class="mt-7"><div class="mb-3"><h3 class="text-lg font-bold">Loser playoff bracket</h3><p class="mt-1 text-sm text-slate-600">Red-path winners in this diagram are the actual match losers advancing toward last place. Two actual match wins make a player safe.</p></div><div class="bracket-shell"><div id="last-place-bracket" class="brackets-viewer"></div></div></div>` : ""}
+  </section>`;
 }
 
 async function loadPublicRecord(idOrSlug) {
@@ -227,9 +332,11 @@ async function renderPublicTournament(idOrSlug) {
     </div>
     ${champion ? `<div class="mt-6 rounded-xl bg-gradient-to-r from-amber-100 to-yellow-50 p-6"><p class="text-sm font-bold uppercase tracking-widest text-amber-700">Champion</p><p class="mt-1 text-3xl font-black">${escapeHtml(champion.name)}</p></div>` : ""}
     ${state.bracket ? `<section class="mt-8"><h2 class="mb-4 text-xl font-bold">Bracket</h2><div class="bracket-shell"><div id="bracket-viewer" class="brackets-viewer"></div></div></section>` : ""}
+    ${lastPlaceSection(state, { readOnly: true })}
     <div class="mt-8">${standingsHtml(state)}</div>
   `, { wide: true });
   renderBracket(state);
+  renderLastPlaceBracket(state);
   subscribeToTournament(record.id, () => renderPublicTournament(idOrSlug));
 }
 
@@ -350,6 +457,13 @@ function draftEditor(state) {
       ${state.players.length ? `<button class="btn-secondary mt-4">${icon("save")} Save names and seeds</button>` : ""}
     </form>
     ${placementPreview(state)}
+    <fieldset class="mt-6 border-t border-slate-200 pt-5">
+      <legend class="font-bold">Last-place result</legend>
+      <div class="mt-3 grid gap-3 sm:grid-cols-2">
+        <label class="rounded-xl border-2 ${state.lastPlaceMode !== "standard" ? "border-red-300 bg-red-50" : "border-slate-200 bg-white"} p-4"><span class="flex items-start gap-3"><input class="mt-1" type="radio" name="last-place-mode" value="fair" ${state.lastPlaceMode !== "standard" ? "checked" : ""}><span><strong class="block">Fair playoff</strong><span class="mt-1 block text-sm text-slate-600">Players eliminated without a real win enter an automatic loser event. Byes do not count as wins.</span></span></span></label>
+        <label class="rounded-xl border-2 ${state.lastPlaceMode === "standard" ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white"} p-4"><span class="flex items-start gap-3"><input class="mt-1" type="radio" name="last-place-mode" value="standard" ${state.lastPlaceMode === "standard" ? "checked" : ""}><span><strong class="block">Standard placement</strong><span class="mt-1 block text-sm text-slate-600">Use only the normal double-elimination standings with no separate loser playoff.</span></span></span></label>
+      </div>
+    </fieldset>
     <div class="mt-6 border-t border-slate-200 pt-5"><button class="btn-primary" data-action="start" ${state.players.length < 2 ? "disabled" : ""}>Start tournament</button></div>
   </section>`;
 }
@@ -371,11 +485,12 @@ function activeEditor(state, { readOnly = false } = {}) {
   const completed = state.bracket.match.filter((match) => match.status >= MATCH_STATUS.completed && match.opponent1 && match.opponent2).sort((a, b) => b.id - a.id);
   return `<section>
     ${state.championId ? `<div class="rounded-xl bg-gradient-to-r from-amber-100 to-yellow-50 p-6"><p class="text-sm font-bold uppercase tracking-widest text-amber-700">Champion</p><p class="mt-1 text-3xl font-black">${escapeHtml(state.players.find((player) => player.id === state.championId)?.name)}</p></div>` : ""}
-    <div class="mt-6 grid gap-6 xl:grid-cols-[1fr_22rem]">
+    ${lastPlaceSection(state, { readOnly })}
+    <div class="mt-8 grid gap-6 xl:grid-cols-[1fr_22rem]">
       <div><div class="flex items-center justify-between"><h2 class="text-xl font-bold">Ready matches</h2><span class="badge bg-blue-100 text-blue-700">${playable.length}</span></div><div class="mt-4 grid gap-4 md:grid-cols-2">${playable.length ? playable.map((match) => matchCard(state, match, { readOnly })).join("") : `<div class="card col-span-full text-slate-500">No match is currently ready.</div>`}</div></div>
       <aside><h2 class="text-xl font-bold">Completed matches</h2><div class="mt-4 max-h-[36rem] space-y-3 overflow-y-auto">${completed.length ? completed.map((match) => matchCard(state, match, { completed: true, readOnly })).join("") : `<div class="card text-slate-500">No results yet.</div>`}</div></aside>
     </div>
-    <section class="mt-8"><h2 class="mb-4 text-xl font-bold">Bracket</h2><div class="bracket-shell"><div id="bracket-viewer" class="brackets-viewer"></div></div></section>
+    <section class="mt-8"><h2 class="mb-4 text-xl font-bold">Championship bracket</h2><div class="bracket-shell"><div id="bracket-viewer" class="brackets-viewer"></div></div></section>
     <div class="mt-8">${standingsHtml(state)}</div>
   </section>`;
 }
@@ -404,15 +519,24 @@ async function backgroundSync(id, rerender = true) {
   }
 }
 
-function resultDialog(state, match, impact = []) {
+function resultDialog(state, match, impact = [], { lastPlace = false } = {}) {
   const dialog = document.createElement("dialog");
-  const player1 = state.players.find((player) => player.bracketId === match.opponent1.id);
-  const player2 = state.players.find((player) => player.bracketId === match.opponent2.id);
-  const currentWinner = match.opponent1.result === "win" ? player1.id : match.opponent2.result === "win" ? player2.id : "";
+  const [player1, player2] = lastPlace
+    ? lastPlaceMatchPlayers(state, match)
+    : [
+        state.players.find((player) => player.bracketId === match.opponent1.id),
+        state.players.find((player) => player.bracketId === match.opponent2.id),
+      ];
+  const currentWinner = lastPlace
+    ? state.lastPlace.format === "reverse_double_elimination"
+      ? match.actualWinnerId ?? ""
+      : match.opponent1?.result === "win" ? player1.id : match.opponent2?.result === "win" ? player2.id : ""
+    : match.opponent1?.result === "win" ? player1.id : match.opponent2?.result === "win" ? player2.id : "";
   dialog.className = "w-[min(34rem,calc(100vw-2rem))] rounded-xl p-0 shadow-2xl backdrop:bg-slate-950/60";
   dialog.innerHTML = `<form method="dialog" id="result-form" class="p-6">
-    <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-widest text-blue-600">${escapeHtml(matchLabel(state, match))}</p><h2 class="mt-1 text-xl font-black">Record result</h2></div><button value="cancel" class="rounded p-2 text-slate-500 hover:bg-slate-100">×</button></div>
+    <div class="flex items-start justify-between gap-4"><div><p class="text-xs font-bold uppercase tracking-widest ${lastPlace ? "text-red-700" : "text-blue-600"}">${escapeHtml(lastPlace ? lastPlaceMatchLabel(state, match) : matchLabel(state, match))}</p><h2 class="mt-1 text-xl font-black">Record result</h2></div><button value="cancel" class="rounded p-2 text-slate-500 hover:bg-slate-100">×</button></div>
     ${impact.length ? `<div class="mt-4 rounded-lg bg-amber-100 p-3 text-sm text-amber-900">This correction clears ${impact.length} downstream result${impact.length === 1 ? "" : "s"}.</div>` : ""}
+    ${lastPlace && state.lastPlace.format === "reverse_double_elimination" ? `<div class="mt-4 rounded-lg bg-red-50 p-3 text-sm font-semibold text-red-800">Select the actual match winner. The other player advances through the loser bracket.</div>` : ""}
     <div class="mt-5 grid grid-cols-[1fr_7rem] items-center gap-3"><strong>${escapeHtml(player1.name)}</strong><input class="field" name="score1" type="number" min="0" step="1" value="${match.opponent1.score ?? ""}" placeholder="Score"><strong>${escapeHtml(player2.name)}</strong><input class="field" name="score2" type="number" min="0" step="1" value="${match.opponent2.score ?? ""}" placeholder="Score"></div>
     <label class="mt-5 block text-sm font-semibold">Winner<select class="field mt-1" name="winner" required><option value="">Select winner</option><option value="${player1.id}" ${currentWinner === player1.id ? "selected" : ""}>${escapeHtml(player1.name)}</option><option value="${player2.id}" ${currentWinner === player2.id ? "selected" : ""}>${escapeHtml(player2.name)}</option></select></label>
     <label class="mt-4 flex items-start gap-2 text-sm"><input class="mt-1 rounded border-slate-300" name="override" type="checkbox"><span>Allow the selected winner to differ from an unequal score.</span></label>
@@ -430,7 +554,7 @@ function resultDialog(state, match, impact = []) {
     const raw2 = values.get("score2");
     try {
       await commitAndSync(state.id, {
-        type: "set_match_result",
+        type: lastPlace ? "set_last_place_result" : "set_match_result",
         payload: {
           matchId: match.id,
           opponent1Score: raw1 === "" ? null : Number(raw1),
@@ -464,7 +588,10 @@ async function renderAdminTournament(id) {
     </div>
     <div class="mt-8">${state.status === "draft" ? draftEditor(state) : state.status === "archived" ? `<div class="card text-slate-600">This tournament is archived. Restore it to manage results.</div><div class="mt-8">${activeEditor(state, { readOnly: true })}</div>` : activeEditor(state)}</div>
   `, { wide: true });
-  if (state.bracket) renderBracket(state);
+  if (state.bracket) {
+    renderBracket(state);
+    renderLastPlaceBracket(state);
+  }
 
   document.querySelector("#add-player")?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -481,6 +608,9 @@ async function renderAdminTournament(id) {
     try { await commitAndSync(id, { type: "set_players", payload: { players: assignments } }); } catch (error) { toast(error.message, "error"); }
   });
   document.querySelector("[data-action=reroll]")?.addEventListener("click", () => commitAndSync(id, { type: "reroll", payload: {} }).catch((error) => toast(error.message, "error")));
+  document.querySelectorAll("[name=last-place-mode]").forEach((input) => input.addEventListener("change", () => {
+    commitAndSync(id, { type: "update_metadata", payload: { lastPlaceMode: input.value } }).catch((error) => toast(error.message, "error"));
+  }));
   document.querySelector("[data-action=start]")?.addEventListener("click", () => {
     if (confirm("Start this tournament? Players and seeds will be locked.")) commitAndSync(id, { type: "start", payload: {} }).catch((error) => toast(error.message, "error"));
   });
@@ -506,6 +636,22 @@ async function renderAdminTournament(id) {
     const impact = await correctionImpact(state, matchId);
     if (!confirm(`Clear this result${impact.length ? ` and ${impact.length} downstream result(s)` : ""}?`)) return;
     commitAndSync(id, { type: "clear_match_result", payload: { matchId, confirmRollback: true } }).catch((error) => toast(error.message, "error"));
+  }));
+  document.querySelectorAll("[data-action=edit-last-place-result]").forEach((button) => button.addEventListener("click", async () => {
+    const matchId = button.dataset.match;
+    const match = state.lastPlace.format === "reverse_double_elimination"
+      ? state.lastPlace.bracket.match.find((item) => String(item.id) === matchId)
+      : state.lastPlace.matches.find((item) => String(item.id) === matchId);
+    const impact = await lastPlaceCorrectionImpact(state, match.id);
+    resultDialog(state, match, impact, { lastPlace: true });
+  }));
+  document.querySelectorAll("[data-action=clear-last-place-result]").forEach((button) => button.addEventListener("click", async () => {
+    const matchId = button.dataset.match;
+    const impact = state.lastPlace.format === "reverse_double_elimination"
+      ? await lastPlaceCorrectionImpact(state, matchId)
+      : [];
+    if (!confirm(`Clear this loser result${impact.length ? ` and ${impact.length} downstream result(s)` : ""}?`)) return;
+    commitAndSync(id, { type: "clear_last_place_result", payload: { matchId, confirmRollback: true } }).catch((error) => toast(error.message, "error"));
   }));
   document.querySelector("[data-action=reset]")?.addEventListener("click", () => {
     if (confirm("Return to draft and permanently clear all bracket results?")) commitAndSync(id, { type: "reset_to_draft", payload: { confirmReset: true } }).catch((error) => toast(error.message, "error"));

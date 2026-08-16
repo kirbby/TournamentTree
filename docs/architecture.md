@@ -34,6 +34,10 @@ An old cache without pending operations never overwrites cloud state. Multiple o
 
 `brackets-manager` 1.11.0 creates and propagates bracket entities; `brackets-viewer` 1.9.1 renders them. The wrapper owns partial seed placement, a safe bye topology, scoring rules, correction impact, result reset, and completion semantics. Grand Final 2 remains locked when the winners-bracket champion wins Grand Final 1 and activates only when the losers-bracket champion wins it.
 
+Drafts choose either standard placement or the fair last-place event. In fair mode, a real main-bracket win makes a player safe; byes do not count. Players eliminated with no real wins become candidates once every zero-win path is resolved. One candidate is last automatically, two play once, three complete a round robin with shared last place allowed, and four or more play mirrored double elimination. In the mirrored bracket the actual loser propagates, two actual wins make a player safe, and the Grand Loser Final has the same conditional reset shape as the championship.
+
+Championship and last-place completion are tracked independently. A fair-mode tournament reaches `completed` only after both the champion and last place (or tied last places) are known.
+
 ## Routes
 
 Hash navigation works from an FTP-hosted subdirectory:

@@ -94,6 +94,10 @@ export const tournamentApi = {
         return request(`/tournaments/${encodedId}/matches/${encodeURIComponent(payload.matchId)}/result`, { ...common, method: "PUT", body: payload });
       case "clear_match_result":
         return request(`/tournaments/${encodedId}/matches/${encodeURIComponent(payload.matchId)}/result`, { ...common, method: "DELETE", body: payload });
+      case "set_last_place_result":
+        return request(`/tournaments/${encodedId}/last-place/matches/${encodeURIComponent(payload.matchId)}/result`, { ...common, method: "PUT", body: payload });
+      case "clear_last_place_result":
+        return request(`/tournaments/${encodedId}/last-place/matches/${encodeURIComponent(payload.matchId)}/result`, { ...common, method: "DELETE", body: payload });
       case "archive":
         return request(`/tournaments/${encodedId}/archive`, { ...common, method: "POST", body: payload });
       case "restore":

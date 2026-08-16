@@ -19,8 +19,10 @@ describe("OpenAPI endpoint", () => {
     expect(bundled).toBe(canonical);
     expect(canonical).toContain("openapi: 3.1.0");
     expect(canonical).toContain("  /openapi.yaml:");
+    expect(canonical).toContain("/last-place/matches/{matchId}/result:");
     expect(functionSource).toContain('Deno.readTextFile(new URL("./openapi.yaml", import.meta.url))');
     expect(functionSource).toContain('parts[0] === "openapi.yaml" && method === "GET"');
+    expect(functionSource).toContain('type: "set_last_place_result"');
     expect(functionSource).toContain('"Content-Type": "application/vnd.oai.openapi;version=3.1"');
     expect(config).toContain('static_files = [ "./functions/tournament-api/openapi.yaml" ]');
   });

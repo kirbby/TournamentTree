@@ -18,6 +18,12 @@ For `PUT /tournaments/{id}/matches/{matchId}/result`, `winnerId` is always requi
 
 Before correcting a completed match, inspect it and downstream state. A response with `rollback_confirmation_required` lists affected matches. Show that impact to the user; only repeat with `confirmRollback: true` after approval.
 
+## Fair last place
+
+Drafts expose `lastPlaceMode` as `fair` or `standard`. Fair mode is the default for new tournaments. Do not manually choose candidates: the engine selects players eliminated from the championship without a real match win, and byes never count as wins.
+
+Inspect `state.lastPlace` before acting. Its format is automatic for one candidate, `single_match` for two, `round_robin` for three, or `reverse_double_elimination` for four or more. Submit actual match winners through `PUT /tournaments/{id}/last-place/matches/{matchId}/result`. In mirrored double elimination, the API still expects the actual winner; the engine advances the actual loser toward the Grand Loser Final. Correct last-place results with the same rollback-confirmation workflow as championship results. A three-player round-robin tie intentionally produces multiple `lastPlaceIds`.
+
 ## Limits
 
 Tokens may manage tournament state and read events. They cannot mint/revoke tokens, force an offline venue snapshot, permanently delete a tournament, or bypass lifecycle rules. Draft players cannot change after the tournament starts unless an administrator confirms a full reset to draft, which clears bracket and result history.

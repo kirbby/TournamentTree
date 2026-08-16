@@ -4,6 +4,7 @@ import {
   applyOperation,
   correctionImpact,
   createTournament,
+  lastPlacePlayerId,
   matchWinnerId,
   publicTournament,
   validateTournamentState,
@@ -223,6 +224,12 @@ function operationFromRoute(method: string, tail: string[], input: any) {
   if (tail[0] === "matches" && tail[1] && tail[2] === "result" && method === "DELETE") {
     return { type: "clear_match_result", payload: { ...input, matchId: Number(tail[1]) } };
   }
+  if (tail[0] === "last-place" && tail[1] === "matches" && tail[2] && tail[3] === "result" && method === "PUT") {
+    return { type: "set_last_place_result", payload: { ...input, matchId: tail[2] } };
+  }
+  if (tail[0] === "last-place" && tail[1] === "matches" && tail[2] && tail[3] === "result" && method === "DELETE") {
+    return { type: "clear_last_place_result", payload: { ...input, matchId: tail[2] } };
+  }
   if (tail[0] === "archive" && method === "POST") return { type: "archive", payload: input };
   if (tail[0] === "restore" && method === "POST") return { type: "restore", payload: input };
   return null;
@@ -321,12 +328,29 @@ async function handle(request: Request) {
     visibleRow(row, actor);
     const state = row.state;
     const matches = (state.bracket?.match ?? []).map((match: any) => ({ ...match, winnerId: matchWinnerId(state, match) }));
-    return json({ matches }, 200, { revision: row.revision });
+    const lastPlaceState = state.lastPlace ?? null;
+    const lastPlaceMatches = lastPlaceState?.format === "reverse_double_elimination"
+      ? (lastPlaceState.bracket?.match ?? []).map((match: any) => ({
+          ...match,
+          opponent1PlayerId: lastPlacePlayerId(state, match.opponent1?.id),
+          opponent2PlayerId: lastPlacePlayerId(state, match.opponent2?.id),
+          winnerId: match.actualWinnerId ?? null,
+        }))
+      : (lastPlaceState?.matches ?? []).map((match: any) => ({
+          ...match,
+          winnerId: match.opponent1?.result === "win" ? match.opponent1.id : match.opponent2?.result === "win" ? match.opponent2.id : null,
+        }));
+    return json({ matches, lastPlaceMatches }, 200, { revision: row.revision });
   }
   if (tail[0] === "standings" && method === "GET") {
     const actor = await actorFromRequest(request, "tournaments:read");
     visibleRow(row, actor);
-    return json({ standings: row.state.standings, championId: row.state.championId }, 200, { revision: row.revision });
+    return json({
+      standings: row.state.standings,
+      championId: row.state.championId,
+      lastPlaceIds: row.state.lastPlace?.lastPlaceIds ?? [],
+      lastPlaceStatus: row.state.lastPlace?.status ?? "disabled",
+    }, 200, { revision: row.revision });
   }
   if (tail[0] === "events" && method === "GET") {
     await requireActor(request, "tournaments:read");

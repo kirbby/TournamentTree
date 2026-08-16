@@ -5,7 +5,10 @@ import {
   buildPlacement,
   correctionImpact,
   createTournament,
+  lastPlaceCorrectionImpact,
+  lastPlacePlayerId,
   readyMatches,
+  readyLastPlaceMatches,
 } from "../supabase/functions/_shared/tournament-engine.js";
 
 async function draftWithPlayers(count, seededCount = 0) {
@@ -34,14 +37,43 @@ async function recordWinner(state, match, side = 1, extra = {}) {
   })).state;
 }
 
+async function recordLastPlaceWinner(state, match, side = 1, extra = {}) {
+  const playerId = state.lastPlace.format === "reverse_double_elimination"
+    ? lastPlacePlayerId(state, side === 1 ? match.opponent1.id : match.opponent2.id)
+    : side === 1 ? match.opponent1.id : match.opponent2.id;
+  return (await applyOperation(state, {
+    type: "set_last_place_result",
+    payload: {
+      matchId: match.id,
+      winnerId: playerId,
+      opponent1Score: null,
+      opponent2Score: null,
+      ...extra,
+    },
+  })).state;
+}
+
+async function finishMainBracket(state) {
+  let safety = 0;
+  while (readyMatches(state).length > 0 && safety < 200) {
+    state = await recordWinner(state, readyMatches(state)[0], 1);
+    safety += 1;
+  }
+  expect(safety).toBeLessThan(200);
+  return state;
+}
+
 async function completeTournament(count) {
   let state = await draftWithPlayers(count, Math.min(4, count));
   state = (await applyOperation(state, { type: "start", payload: {} })).state;
   let safety = 0;
   while (state.status === "active" && safety < 200) {
-    const playable = readyMatches(state);
-    expect(playable.length).toBeGreaterThan(0);
-    state = await recordWinner(state, playable[0], 1);
+    const mainPlayable = readyMatches(state);
+    const lastPlacePlayable = readyLastPlaceMatches(state);
+    expect(mainPlayable.length + lastPlacePlayable.length).toBeGreaterThan(0);
+    state = mainPlayable.length
+      ? await recordWinner(state, mainPlayable[0], 1)
+      : await recordLastPlaceWinner(state, lastPlacePlayable[0], 1);
     safety += 1;
   }
   expect(safety).toBeLessThan(200);
@@ -101,6 +133,136 @@ describe("bracket generation", () => {
       expect(first.indexOf(player.id)).toBe(second.indexOf(player.id));
     }
     expect(first).not.toEqual(second);
+  });
+});
+
+describe("fair last-place playoff", () => {
+  async function mainFinished(count) {
+    let state = await draftWithPlayers(count, Math.min(4, count));
+    state = (await applyOperation(state, { type: "reroll", payload: { randomSeed: "format-test" } })).state;
+    state = (await applyOperation(state, { type: "start", payload: {} })).state;
+    return finishMainBracket(state);
+  }
+
+  it("offers fair and standard modes and defaults new tournaments to fair", async () => {
+    let state = await draftWithPlayers(4);
+    expect(state.lastPlaceMode).toBe("fair");
+    state = (await applyOperation(state, { type: "update_metadata", payload: { lastPlaceMode: "standard" } })).state;
+    state = (await applyOperation(state, { type: "start", payload: {} })).state;
+    state = await finishMainBracket(state);
+    expect(state.lastPlace.status).toBe("disabled");
+    expect(state.status).toBe("completed");
+  });
+
+  it.each([
+    [4, 1, "automatic"],
+    [8, 2, "single_match"],
+    [10, 3, "round_robin"],
+    [16, 4, "reverse_double_elimination"],
+  ])("selects the fair format for %i players", async (count, candidates, format) => {
+    const state = await mainFinished(count);
+    expect(state.lastPlace.candidatePlayerIds).toHaveLength(candidates);
+    expect(state.lastPlace.format).toBe(format);
+  });
+
+  it("uses one normal result for two candidates", async () => {
+    let state = await mainFinished(8);
+    const match = readyLastPlaceMatches(state)[0];
+    const expectedLast = match.opponent2.id;
+    state = await recordLastPlaceWinner(state, match, 1);
+    expect(state.lastPlace.lastPlaceIds).toEqual([expectedLast]);
+    expect(state.status).toBe("completed");
+  });
+
+  it("allows a shared last place when the three-player round robin ties", async () => {
+    let state = await mainFinished(10);
+    const [first, second, third] = state.lastPlace.matches;
+    state = await recordLastPlaceWinner(state, first, 1);
+    state = await recordLastPlaceWinner(state, second, 2);
+    state = await recordLastPlaceWinner(state, third, 1);
+    expect(state.lastPlace.lastPlaceIds).toHaveLength(3);
+    expect(state.lastPlace.status).toBe("completed");
+  });
+
+  it("plays mirrored double elimination through a decisive grand loser final", async () => {
+    let state = await mainFinished(16);
+    let safety = 0;
+    while (readyLastPlaceMatches(state).length && safety < 30) {
+      const match = readyLastPlaceMatches(state)[0];
+      const round = state.lastPlace.bracket.round.find((item) => item.id === match.round_id);
+      const group = state.lastPlace.bracket.group.find((item) => item.id === round.group_id);
+      const side = group.number === 3 && round.number === 1 ? 2 : 1;
+      state = await recordLastPlaceWinner(state, match, side);
+      safety += 1;
+    }
+    expect(state.lastPlace.status).toBe("completed");
+    const finalGroup = state.lastPlace.bracket.group.find((group) => group.number === 3);
+    const resetRound = state.lastPlace.bracket.round.find((round) => round.group_id === finalGroup.id && round.number === 2);
+    const reset = state.lastPlace.bracket.match.find((match) => match.round_id === resetRound.id);
+    expect(reset.status).toBe(0);
+    expect(state.lastPlace.lastPlaceIds).toHaveLength(1);
+  });
+
+  it("activates and completes the grand loser reset when the safety finalist loses first", async () => {
+    let state = await mainFinished(16);
+    let sawReset = false;
+    let safety = 0;
+    while (readyLastPlaceMatches(state).length && safety < 30) {
+      const match = readyLastPlaceMatches(state)[0];
+      const round = state.lastPlace.bracket.round.find((item) => item.id === match.round_id);
+      const group = state.lastPlace.bracket.group.find((item) => item.id === round.group_id);
+      if (group.number === 3 && round.number === 2) sawReset = true;
+      state = await recordLastPlaceWinner(state, match, 1);
+      safety += 1;
+    }
+    expect(sawReset).toBe(true);
+    expect(state.lastPlace.status).toBe("completed");
+    expect(state.status).toBe("completed");
+    const actualWins = new Map(state.lastPlace.candidatePlayerIds.map((playerId) => [playerId, 0]));
+    for (const match of state.lastPlace.bracket.match) {
+      if (match.actualWinnerId) actualWins.set(match.actualWinnerId, actualWins.get(match.actualWinnerId) + 1);
+    }
+    for (const [playerId, wins] of actualWins) {
+      expect(wins).toBe(state.lastPlace.lastPlaceIds.includes(playerId) ? 1 : 2);
+    }
+  });
+
+  it("reports and clears downstream reverse-playoff results on correction", async () => {
+    let state = await mainFinished(16);
+    const first = readyLastPlaceMatches(state)[0];
+    state = await recordLastPlaceWinner(state, first, 1);
+    while ((await lastPlaceCorrectionImpact(state, first.id)).length === 0) {
+      state = await recordLastPlaceWinner(state, readyLastPlaceMatches(state)[0], 1);
+    }
+    const impact = await lastPlaceCorrectionImpact(state, first.id);
+    expect(impact.length).toBeGreaterThan(0);
+    await expect(recordLastPlaceWinner(state, first, 2)).rejects.toMatchObject({ code: "rollback_confirmation_required" });
+    state = await recordLastPlaceWinner(state, first, 2, { confirmRollback: true });
+    expect(readyLastPlaceMatches(state).length).toBeGreaterThan(0);
+  });
+
+  it("invalidates a started loser playoff when a championship result is corrected", async () => {
+    let state = await mainFinished(16);
+    state = await recordLastPlaceWinner(state, readyLastPlaceMatches(state)[0], 1);
+    const mainMatch = state.bracket.match.find((match) =>
+      match.status >= 4 && match.opponent1?.id != null && match.opponent2?.id != null);
+    const currentWinnerIsFirst = mainMatch.opponent1.result === "win";
+    const correctedBracketId = currentWinnerIsFirst ? mainMatch.opponent2.id : mainMatch.opponent1.id;
+    const correctedWinner = state.players.find((player) => player.bracketId === correctedBracketId);
+    const impact = await correctionImpact(state, mainMatch.id);
+    expect(impact.some((match) => match.bracket === "last_place")).toBe(true);
+    state = (await applyOperation(state, {
+      type: "set_match_result",
+      payload: {
+        matchId: mainMatch.id,
+        winnerId: correctedWinner.id,
+        opponent1Score: null,
+        opponent2Score: null,
+        confirmRollback: true,
+      },
+    })).state;
+    expect(state.lastPlace.status).toBe("pending");
+    expect(state.lastPlace.bracket).toBeNull();
   });
 });
 

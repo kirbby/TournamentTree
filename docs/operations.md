@@ -20,6 +20,8 @@
 - With the browser offline, enter a result and reload; the state and pending count remain.
 - Reconnect and verify the queued operation is applied once.
 - Exercise Grand Final 1 both ways and confirm Grand Final 2 is conditional.
+- Enable fair last-place mode and confirm zero-win candidates ignore byes.
+- Exercise the one-player, two-player, three-player tie, and mirrored double-elimination loser formats; confirm the Grand Loser Final reset is conditional.
 
 ## Venue procedure
 

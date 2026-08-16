@@ -9,6 +9,7 @@ The frontend is plain JavaScript built by Vite and can be uploaded as the conten
 - Draft, active, completed, and archived tournament lifecycle.
 - Partial seeding, reproducible unseeded shuffling, bracket preview, and byes.
 - Winners bracket, losers bracket, Grand Final 1, and conditional Grand Final 2.
+- Optional fair last-place event: one automatic loser, one match for two candidates, round robin for three, and complete mirrored double elimination for four or more.
 - Winner-only results or optional paired integer scores.
 - Confirmed rollback of downstream results when correcting an earlier match.
 - Public current tournaments, archive, bracket, champion, and standings.
@@ -74,4 +75,4 @@ The live OpenAPI 3.1 document is available at `${API_BASE}/openapi.yaml` (for ex
 - `docs/` — architecture, configuration, operations, OpenAPI, and AI usage.
 - `public/` — locally served PWA assets.
 
-Version: `0.1.2`.
+Version: `0.2.0`.

@@ -19,7 +19,7 @@ export default defineConfig({
       manifest: {
         name: "TournamentTree",
         short_name: "TournamentTree",
-        description: "Offline-first double-elimination tournament manager",
+        description: "Offline-first championship and fair last-place tournament manager",
         theme_color: "#111318",
         background_color: "#111318",
         display: "standalone",
