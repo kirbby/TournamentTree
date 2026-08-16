@@ -2,6 +2,10 @@
 
 All notable changes are documented here. Versions follow semantic versioning.
 
+## 0.2.3 - 2026-08-16
+
+- Fixed unreadable unselected last-place mode cards by using dark-theme semantic colors and explicit text contrast.
+
 ## 0.2.2 - 2026-08-16
 
 - Limited save notifications to one visible toast at a time.

@@ -57,6 +57,33 @@
   animation: toast-in 180ms ease-out;
 }
 
+.mode-choice {
+  display: block;
+  cursor: pointer;
+  color: var(--app-text);
+  background: var(--surface-bg-subtle);
+  border: 2px solid var(--surface-border);
+  border-radius: 0.75rem;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.mode-choice:hover {
+  border-color: var(--color-primary-border);
+}
+
+.mode-choice.is-selected {
+  background: var(--button-subtle-bg);
+  border-color: var(--color-primary);
+}
+
+.mode-choice-description {
+  color: var(--app-text-muted);
+}
+
+.mode-choice input[type="radio"] {
+  accent-color: var(--color-primary);
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-0.5rem); }
 }
