@@ -1,0 +1,385 @@
+openapi: 3.1.0
+info:
+  title: TournamentTree API
+  version: 0.1.0
+  description: Offline-aware double-elimination tournament management API. Mutation requests require a scoped token, a UUID Idempotency-Key, and—except creation—the current If-Match revision.
+  license: { name: Proprietary }
+servers:
+  - url: https://{projectRef}.supabase.co/functions/v1/tournament-api/v1
+    variables:
+      projectRef:
+        default: PROJECT_REF
+security: []
+paths:
+  /health:
+    get:
+      summary: Check API health
+      operationId: health
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+  /tournaments:
+    get:
+      summary: List tournaments
+      operationId: listTournaments
+      description: Lists public tournaments. A token also includes drafts.
+      security: [{ bearerAuth: [] }, {}]
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+    post:
+      summary: Create a tournament
+      operationId: createTournament
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/TournamentCreate"
+                - type: object
+                  required: [snapshot]
+                  properties: { snapshot: { $ref: "#/components/schemas/TournamentState" } }
+      responses:
+        "201": { $ref: "#/components/responses/Success" }
+        "400": { $ref: "#/components/responses/Error" }
+        "401": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}:
+    parameters: [{ $ref: "#/components/parameters/Tournament" }]
+    get:
+      summary: Get a tournament snapshot
+      operationId: getTournament
+      security: [{ bearerAuth: [] }, {}]
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "404": { $ref: "#/components/responses/Error" }
+    patch:
+      summary: Update tournament metadata
+      operationId: updateTournament
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+        - { $ref: "#/components/parameters/Revision" }
+      requestBody:
+        $ref: "#/components/requestBodies/JsonObject"
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}/players:
+    parameters: [{ $ref: "#/components/parameters/Tournament" }]
+    post:
+      summary: Add a draft player
+      operationId: addPlayer
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlayerInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    put:
+      summary: Save the complete draft roster
+      operationId: replaceDraftPlayers
+      description: Saves names and seeds for the complete existing draft roster.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}/players/{playerId}:
+    parameters:
+      - { $ref: "#/components/parameters/Tournament" }
+      - name: playerId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Update a draft player
+      operationId: updatePlayer
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PlayerInput" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Remove a draft player
+      operationId: removePlayer
+      description: Removes a player from a draft; this is not tournament deletion.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "409": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}/players-order:
+    parameters: [{ $ref: "#/components/parameters/Tournament" }]
+    put:
+      summary: Reorder draft players
+      operationId: reorderPlayers
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/reroll:
+    post:
+      summary: Reroll unseeded placement
+      operationId: rerollPlacement
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }, { $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody: { $ref: "#/components/requestBodies/OptionalJsonObject" }
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/start:
+    post:
+      summary: Start a tournament
+      operationId: startTournament
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }, { $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody: { $ref: "#/components/requestBodies/OptionalJsonObject" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "422": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}/reset-to-draft:
+    post:
+      summary: Reset a tournament to draft
+      operationId: resetTournamentToDraft
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }, { $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmReset]
+              properties: { confirmReset: { const: true } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "409": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}/matches:
+    get:
+      summary: List tournament matches
+      operationId: listMatches
+      security: [{ bearerAuth: [] }, {}]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }]
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/matches/{matchId}/result:
+    parameters:
+      - { $ref: "#/components/parameters/Tournament" }
+      - name: matchId
+        in: path
+        required: true
+        schema: { type: integer, minimum: 0 }
+    put:
+      summary: Set or correct a match result
+      operationId: setMatchResult
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MatchResult" }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "409": { $ref: "#/components/responses/Error" }
+        "422": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Clear a match result
+      operationId: clearMatchResult
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties: { confirmRollback: { type: boolean, default: false } }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "409": { $ref: "#/components/responses/Error" }
+  /tournaments/{tournament}/standings:
+    get:
+      summary: Get final standings
+      operationId: getStandings
+      security: [{ bearerAuth: [] }, {}]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }]
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/events:
+    get:
+      summary: Get tournament audit events
+      operationId: getTournamentEvents
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }]
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/archive:
+    post:
+      summary: Archive a tournament
+      operationId: archiveTournament
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }, { $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody: { $ref: "#/components/requestBodies/OptionalJsonObject" }
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/restore:
+    post:
+      summary: Restore an archived tournament
+      operationId: restoreTournament
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }, { $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody: { $ref: "#/components/requestBodies/OptionalJsonObject" }
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+  /tournaments/{tournament}/venue-snapshot:
+    put:
+      summary: Force the venue snapshot over cloud state
+      operationId: forceVenueSnapshot
+      description: Administrator session only. Replaces a conflicting cloud snapshot with validated venue state and marks intervening events superseded.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/Tournament" }, { $ref: "#/components/parameters/IdempotencyKey" }, { $ref: "#/components/parameters/Revision" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [snapshot, lastSyncedRevision, forceVenue]
+              properties:
+                snapshot: { $ref: "#/components/schemas/TournamentState" }
+                lastSyncedRevision: { type: integer, minimum: 0 }
+                forceVenue: { const: true }
+      responses:
+        "200": { $ref: "#/components/responses/Success" }
+        "403": { $ref: "#/components/responses/Error" }
+        "409": { $ref: "#/components/responses/Error" }
+  /tokens:
+    get:
+      summary: List AI API tokens
+      operationId: listApiTokens
+      description: Administrator session only.
+      security: [{ bearerAuth: [] }]
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+    post:
+      summary: Create an AI API token
+      operationId: createApiToken
+      description: Administrator session only; plaintext token is returned once.
+      security: [{ bearerAuth: [] }]
+      parameters: [{ $ref: "#/components/parameters/IdempotencyKey" }]
+      requestBody: { $ref: "#/components/requestBodies/JsonObject" }
+      responses: { "201": { $ref: "#/components/responses/Success" } }
+  /tokens/{tokenId}/revoke:
+    post:
+      summary: Revoke an AI API token
+      operationId: revokeApiToken
+      description: Administrator session only.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      responses: { "200": { $ref: "#/components/responses/Success" } }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: tt_live token or Supabase administrator JWT
+  parameters:
+    Tournament:
+      name: tournament
+      in: path
+      required: true
+      description: Tournament UUID or slug.
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    Revision:
+      name: If-Match
+      in: header
+      required: true
+      description: Current integer revision returned in response metadata.
+      schema: { type: integer, minimum: 1 }
+  requestBodies:
+    JsonObject:
+      required: true
+      content: { application/json: { schema: { type: object } } }
+    OptionalJsonObject:
+      required: false
+      content: { application/json: { schema: { type: object } } }
+  schemas:
+    TournamentCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        slug: { type: string, maxLength: 64 }
+        tournamentDate: { type: string, format: date }
+    PlayerInput:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        seed: { oneOf: [{ type: integer, minimum: 1 }, { type: "null" }] }
+    MatchResult:
+      type: object
+      required: [winnerId, opponent1Score, opponent2Score]
+      properties:
+        winnerId: { type: string, format: uuid }
+        opponent1Score: { oneOf: [{ type: integer, minimum: 0 }, { type: "null" }] }
+        opponent2Score: { oneOf: [{ type: integer, minimum: 0 }, { type: "null" }] }
+        overrideScoreWinner: { type: boolean, default: false }
+        confirmRollback: { type: boolean, default: false }
+    TournamentState:
+      type: object
+      required: [schemaVersion, id, slug, name, tournamentDate, status, players]
+      properties:
+        schemaVersion: { type: integer, const: 1 }
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        tournamentDate: { type: string, format: date }
+        status: { enum: [draft, active, completed, archived] }
+        players: { type: array, minItems: 0, maxItems: 32, items: { type: object } }
+        bracket: { oneOf: [{ type: object }, { type: "null" }] }
+        championId: { oneOf: [{ type: string, format: uuid }, { type: "null" }] }
+        standings: { type: array, items: { type: object } }
+      additionalProperties: true
+    Envelope:
+      type: object
+      required: [data, meta, error]
+      properties:
+        data: {}
+        meta:
+          type: object
+          properties:
+            revision: { type: integer }
+            updatedAt: { type: string, format: date-time }
+        error:
+          oneOf:
+            - type: "null"
+            - type: object
+              required: [message, code]
+              properties:
+                message: { type: string }
+                code: { type: string }
+                details: {}
+  responses:
+    Success:
+      description: Successful response envelope.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Envelope" } } }
+    Error:
+      description: Error response envelope.
+      content: { application/json: { schema: { $ref: "#/components/schemas/Envelope" } } }

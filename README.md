@@ -1,59 +1,77 @@
-# Vue Tournament Tree App
+# TournamentTree
 
-This is a Vue.js app for displaying a tournament tree with double elimination and variable player count. The app is built using Vue 3 Composition API and Tailwind CSS.
+TournamentTree is an offline-first double-elimination tournament manager for 2–32 players. One organizer manages tournaments from an installable browser app; spectators use public read-only bracket links; external LLMs and automations use a scoped JSON API.
+
+The frontend is plain JavaScript built by Vite and can be uploaded as the contents of `dist/` to any HTTPS static host, including FTP hosting. Supabase provides Auth, durable snapshots, audit events, Realtime updates, and the Edge Function API.
 
 ## Features
 
-- Display a tournament tree with double elimination
-- Variable player count (up to 64 players)
-- Responsive design using Tailwind CSS
+- Draft, active, completed, and archived tournament lifecycle.
+- Partial seeding, reproducible unseeded shuffling, bracket preview, and byes.
+- Winners bracket, losers bracket, Grand Final 1, and conditional Grand Final 2.
+- Winner-only results or optional paired integer scores.
+- Confirmed rollback of downstream results when correcting an earlier match.
+- Public current tournaments, archive, bracket, champion, and standings.
+- Local IndexedDB snapshots, persistent operation queue, PWA asset cache, and JSON export.
+- Venue-wins conflict policy when offline edits and cloud edits overlap.
+- Scoped `tt_live_...` API tokens for AI tools; no service-role credentials leave Supabase.
 
-## Project setup
+## Local development
 
-To run the app locally, follow these steps:
+Requirements: Node.js 20+, pnpm 10+, and optionally the Supabase CLI/Docker for local backend work.
 
-1. Clone the repository
-2. Install the dependencies with `npm install`
-3. Start the development server with `npm run serve`
+```bash
+pnpm install
+cp .env.example .env.local
+pnpm dev
+```
 
-The app should now be running at `http://localhost:8080/`.
+Without environment values, the public app loads and the local UI shell works, but cloud login and synchronization are disabled.
 
-## Components
+Run the complete local verification path:
 
-The app is built using the following components:
+```bash
+pnpm check
+```
 
-- `App.vue`: The main component that renders the tournament tree and controls the state of the app.
-- `Matchup.vue`: A component for displaying a single matchup between two players.
-- `Round.vue`: A component for displaying a single round of matchups.
-- `Bracket.vue`: A component for displaying a single bracket of matchups.
-- `BracketContainer.vue`: A component for displaying a container of all the brackets in a single round.
-- `TournamentTree.vue`: A component for displaying the full tournament tree for all rounds of the tournament.
-- `Button.vue`: A reusable button component for the app.
+## Configuration
 
-## Props
+The static frontend needs only public Supabase values:
 
-The components use the following props:
+```dotenv
+VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
 
-- `Matchup.vue`: `player1` and `player2` objects representing the two players in the matchup.
-- `Round.vue`: `round` object representing a single round of matchups.
-- `Bracket.vue`: `matchup1` and `matchup2` objects representing the two matchups in the bracket.
-- `BracketContainer.vue`: `round` object representing a single round of matchups.
-- `TournamentTree.vue`: `playerCount` number representing the number of players in the tournament.
-- `Button.vue`: `text` string representing the text content of the button.
+Never place a secret/service-role key in a Vite variable. See [configuration](docs/configuration.md) for backend, administrator, AI token, and FTP settings.
 
-## Events
+## Deployment
 
-The components emit the following events:
+- `scripts/deploy-supabase.sh` applies migrations and deploys the Edge Function.
+- `scripts/deploy-static.sh` verifies, builds, and mirrors `dist/` to an FTP/FTPS/SFTP host using `lftp`.
+- Hash routes require no web-server rewrite rules.
+- PWA installation and service workers require HTTPS in production.
 
-- `Button.vue`: `click` event emitted when the button is clicked.
+See [operations](docs/operations.md) for provisioning, smoke tests, offline venue procedure, backup, and recovery.
 
-## Customization
+## API
 
-You can customize the app by modifying the following:
+The deployed base URL is:
 
-- `src/components/Button.vue`: Modify the styling of the button using Tailwind CSS classes.
-- `src/components/TournamentTree.vue`: Modify the player count and the player data in the `rounds` computed property to change the number of players and the matchups in the tournament.
+```text
+https://PROJECT_REF.supabase.co/functions/v1/tournament-api/v1
+```
 
-## Conclusion
+Give an external AI only this URL, the [OpenAPI document](docs/openapi.yaml), the [AI API guide](docs/AI_API_GUIDE.md), and a scoped token created in the admin UI. Do not give it a Supabase secret key.
 
-That's it! With this Vue tournament tree app, you can easily display a double elimination tournament tree with variable player count using the Composition API and Tailwind CSS. Feel free to modify the app and use it in your own projects.
+## Repository map
+
+- `src/` — routes, UI, API client, IndexedDB, and synchronization.
+- `supabase/functions/_shared/` — canonical tournament engine.
+- `supabase/functions/tournament-api/` — JSON API.
+- `supabase/migrations/` — database schema, RLS, and atomic mutation functions.
+- `tests/` — engine and offline persistence tests.
+- `docs/` — architecture, configuration, operations, OpenAPI, and AI usage.
+- `public/` — locally served PWA assets.
+
+Version: `0.1.0`.

@@ -1,0 +1,69 @@
+@import "brackets-viewer/dist/brackets-viewer.min.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    @apply min-h-screen bg-paper text-ink;
+    margin: 0;
+    min-width: 320px;
+    background: radial-gradient(circle at 20% 10%, var(--surface-bg-subtle) 0, transparent 32rem), var(--app-bg);
+  }
+  button, input, select { @apply disabled:cursor-not-allowed disabled:opacity-50; }
+  a { color: var(--link-color); }
+  a:hover { color: var(--link-hover-color); }
+  button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+}
+
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none; min-height: 2.35rem; }
+  .btn-primary { @apply btn; color: var(--button-primary-text); background: var(--button-primary-bg); }
+  .btn-primary:hover { background: var(--button-primary-bg-hover); }
+  .btn-secondary { @apply btn; color: var(--button-secondary-text); background: var(--button-secondary-bg); border: 1px solid var(--button-secondary-border); }
+  .btn-secondary:hover { background: var(--button-secondary-bg-hover); }
+  .btn-danger { @apply btn; color: var(--button-primary-text); background: var(--status-danger); }
+  .field { @apply block w-full rounded-lg text-sm shadow-sm; color: var(--input-text); background: var(--input-bg); border: 1px solid var(--input-border); }
+  .field::placeholder { color: var(--input-placeholder); }
+  .field:focus { border-color: var(--input-border-focus); box-shadow: var(--focus-ring); }
+  .card { @apply rounded-xl p-5; border: 1px solid var(--surface-border); background: var(--surface-bg); box-shadow: var(--surface-shadow); }
+  .badge { @apply inline-flex rounded-full px-2.5 py-1 text-xs font-semibold; }
+}
+
+.bracket-shell {
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: 0.75rem;
+  background: var(--surface-bg);
+}
+
+.brackets-viewer {
+  --primary-background: var(--surface-bg);
+  --secondary-background: var(--surface-bg-subtle);
+  --match-background: var(--surface-bg);
+  --font-color: var(--app-text);
+  --win-color: var(--status-success);
+  --loss-color: var(--status-danger);
+  min-width: max-content;
+}
+
+.brackets-viewer .participant { color: var(--app-text); }
+.brackets-viewer .match { border-color: var(--surface-border); }
+
+.toast {
+  animation: toast-in 180ms ease-out;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+}
+
+@media print {
+  header, .no-print, #connection-bar { display: none !important; }
+  body { background: var(--app-bg); }
+  main { max-width: none !important; padding: 0 !important; }
+  .bracket-shell { border: 0; overflow: visible; }
+}

@@ -1,0 +1,128 @@
+:root {
+  color-scheme: dark;
+
+  --color-bg: #111318;
+  --color-bg-elevated: #1b1e26;
+  --color-bg-subtle: #242833;
+  --color-bg-deep: #0d0f14;
+  --color-border: #303541;
+
+  --color-text: #f3f4f8;
+  --color-text-muted: #aeb4c1;
+  --color-text-inverse: #1c1018;
+
+  --color-primary: #ff7ac3;
+  --color-primary-hover: #ff94cf;
+  --color-primary-soft: #4a2b40;
+  --color-primary-border: #69445f;
+
+  --color-success: #5bd48b;
+  --color-warning: #f5bf4f;
+  --color-danger: #ff6b79;
+
+  --color-info-bg: #29384f;
+  --color-info-text: #a9cdfd;
+  --color-code-text: #ffd4ec;
+  --color-code-bg: #11141b;
+  --color-code-text-muted: #f5d7e8;
+
+  --app-bg: var(--color-bg);
+  --app-text: var(--color-text);
+  --app-text-muted: var(--color-text-muted);
+
+  --surface-bg: var(--color-bg-elevated);
+  --surface-bg-subtle: var(--color-bg-subtle);
+  --surface-border: var(--color-border);
+  --surface-shadow: 0 10px 36px rgba(0, 0, 0, 0.22);
+
+  --link-color: var(--color-primary);
+  --link-hover-color: var(--color-primary-hover);
+
+  --button-primary-bg: var(--color-primary);
+  --button-primary-bg-hover: var(--color-primary-hover);
+  --button-primary-text: var(--color-text-inverse);
+
+  --button-secondary-bg: var(--color-bg-subtle);
+  --button-secondary-bg-hover: #2a2f3b;
+  --button-secondary-text: var(--color-text);
+  --button-secondary-border: var(--color-border);
+
+  --button-subtle-bg: var(--color-primary-soft);
+  --button-subtle-text: var(--color-text);
+  --button-subtle-border: var(--color-primary-border);
+
+  --input-bg: var(--color-bg);
+  --input-text: var(--color-text);
+  --input-placeholder: var(--color-text-muted);
+  --input-border: var(--color-border);
+  --input-border-focus: var(--color-primary);
+
+  --status-success: var(--color-success);
+  --status-warning: var(--color-warning);
+  --status-danger: var(--color-danger);
+
+  --code-bg: var(--color-code-bg);
+  --code-bg-deep: var(--color-bg-deep);
+  --code-text: var(--color-code-text);
+  --code-text-muted: var(--color-code-text-muted);
+
+  --focus-ring: 0 0 0 4px rgba(255, 122, 195, 0.22);
+}
+
+.icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: 0 0 auto;
+  stroke-width: 2.2;
+}
+
+.icon-button,
+.text-button {
+  min-height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.icon-button {
+  width: 2.35rem;
+  padding: 0;
+  color: var(--button-secondary-text);
+  background: var(--button-secondary-bg);
+  border: 1px solid var(--button-secondary-border);
+}
+
+.icon-button:hover,
+.text-button.secondary:hover {
+  background: var(--button-secondary-bg-hover);
+}
+
+.icon-button.is-active {
+  color: var(--color-primary);
+  background: var(--button-subtle-bg);
+  border-color: var(--button-subtle-border);
+}
+
+.icon-button.primary-action {
+  color: var(--button-primary-text);
+  background: var(--button-primary-bg);
+  border-color: transparent;
+}
+
+.icon-button.primary-action:hover {
+  background: var(--button-primary-bg-hover);
+}
+
+.icon-button.danger-action {
+  color: var(--status-danger);
+  background: transparent;
+  border-color: rgba(255, 107, 121, 0.42);
+}
+
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}

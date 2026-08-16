@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.56.1",
+    "brackets-manager": "npm:brackets-manager@1.11.0",
+    "brackets-memory-db": "npm:brackets-memory-db@1.0.6"
+  }
+}
