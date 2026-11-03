@@ -47,16 +47,23 @@ This is the owner's shared policy from kirbbyScaffold. It supersedes older
 commit/push cadence instructions, including per-subtask commit rules. Preserve
 project-specific validation, branch, deployment, and security requirements.
 
-1. **One commit per prompt per repository.** When a user prompt changes files,
-   finish the authorized work and required checks, then create exactly one commit
-   containing that prompt's changes, related tests/docs, and version updates.
-   Do not commit intermediate edits. Research-only prompts need no empty commit.
-   A prompt spanning repositories gets one commit in each changed repository.
-2. **Push at the completed-prompt boundary.** Push that commit once to the
+1. **At least one commit per prompt per repository.** When a user prompt changes
+   files, commit that prompt's authorized changes, related tests/docs, and version
+   updates. Prefer a cohesive commit for a small task, but this is a minimum,
+   never a limit. Additional commits for fixes, review feedback, or CI failures
+   are allowed within the same prompt without asking for permission. Research-only
+   prompts need no empty commit. A prompt spanning repositories gets at least one
+   commit in each changed repository.
+2. **Push completed work and follow-up fixes.** Push completed commits to the
    current branch's configured upstream before handing back, so another PC can
-   resume. Do not push after every edit or tool call. Push before an explicit
-   handoff or machine switch. Follow explicit requests to keep work local.
-   Never leave completed commits local merely to reduce CI usage.
+   resume. Batch edits rather than pushing after every edit or tool call. If CI
+   fails after a push, investigate, fix task-related failures, run relevant checks,
+   and commit and push the correction without waiting for a new prompt or approval.
+   Repeat as needed until resolved; report genuine blockers rather than treating
+   a previous commit or push as a reason to stop. This does not authorize unrelated
+   work, deployments, or bypassing checks. Push before an explicit handoff or
+   machine switch. Follow explicit requests to keep work local. Never leave
+   completed commits local merely to reduce CI usage.
 3. **Preserve work and history.** Inspect status and fetch before editing when
    possible; fast-forward only when safe. Do not overwrite unrelated edits,
    commit another task's files, force-push, or silently change branches. If a
