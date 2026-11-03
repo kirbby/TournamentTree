@@ -39,3 +39,50 @@ Use patch versions for fixes and internal improvements, minor versions for new u
 - Before a release, also run the browser smoke flow described in `docs/operations.md` and validate the deployed Edge Function health endpoint.
 
 Shared repository conventions are documented in `PROJECT_SCAFFOLDING.md`, `THEME.md`, and `ICONS.md`.
+
+<!-- kirbbyScaffold:git-workflow:start -->
+## Commit, cloud sync, and CI policy
+
+This is the owner's shared policy from kirbbyScaffold. It supersedes older
+commit/push cadence instructions, including per-subtask commit rules. Preserve
+project-specific validation, branch, deployment, and security requirements.
+
+1. **One commit per prompt per repository.** When a user prompt changes files,
+   finish the authorized work and required checks, then create exactly one commit
+   containing that prompt's changes, related tests/docs, and version updates.
+   Do not commit intermediate edits. Research-only prompts need no empty commit.
+   A prompt spanning repositories gets one commit in each changed repository.
+2. **Push at the completed-prompt boundary.** Push that commit once to the
+   current branch's configured upstream before handing back, so another PC can
+   resume. Do not push after every edit or tool call. Push before an explicit
+   handoff or machine switch. Follow explicit requests to keep work local.
+   Never leave completed commits local merely to reduce CI usage.
+3. **Preserve work and history.** Inspect status and fetch before editing when
+   possible; fast-forward only when safe. Do not overwrite unrelated edits,
+   commit another task's files, force-push, or silently change branches. If a
+   push is blocked, report the local commit and exact blocker. Do not claim cloud
+   sync succeeded. Stop or handoff requests take priority over finishing checks;
+   label unfinished work and sync it only when requested, without claiming done.
+4. **Separate backups from expensive CI.** Prefer normal working-branch pushes
+   without an open PR during rapid iteration. For GitHub Actions, the recommended
+   full-CI boundaries are non-draft PR updates, pushes to the default/release
+   branches, release tags, and manual dispatch. Draft PRs may defer expensive
+   jobs, but becoming ready must run them. Use per-branch/PR concurrency to cancel
+   obsolete validation runs. Keep required checks on the latest review/release
+   commit; local checks still run before completion.
+5. **Adapt CI deliberately.** Inspect existing workflows, required checks, and
+   deployment triggers before changing them. Avoid duplicate push + PR runs for
+   the same branch. Do not cancel deployments with the validation concurrency
+   group. Preserve security, release, merge-queue, and project-specific gates.
+   Existing workflows are not changed merely by syncing this policy. Until they
+   are adapted, completed-prompt pushes may still trigger CI.
+6. **No routine CI bypass.** Do not add `[skip ci]`, disable required checks, or
+   rewrite history just to save runs. Commit-message skips can leave required
+   GitHub checks pending and block merging. If working directly on the default
+   branch or updating a ready PR, expect CI on each completed-prompt push; use a
+   working branch for iteration when the task permits it.
+
+Policy-only documentation changes do not require an application version bump or
+build. Verify the diff and shared-policy sync instead. Code changes still follow
+the project's normal versioning, test, and production-build requirements.
+<!-- kirbbyScaffold:git-workflow:end -->
