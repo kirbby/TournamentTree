@@ -47,13 +47,16 @@ This is the owner's shared policy from kirbbyScaffold. It supersedes older
 commit/push cadence instructions, including per-subtask commit rules. Preserve
 project-specific validation, branch, deployment, and security requirements.
 
-1. **At least one commit per prompt per repository.** When a user prompt changes
-   files, commit that prompt's authorized changes, related tests/docs, and version
-   updates. Prefer a cohesive commit for a small task, but this is a minimum,
-   never a limit. Additional commits for fixes, review feedback, or CI failures
-   are allowed within the same prompt without asking for permission. Research-only
-   prompts need no empty commit. A prompt spanning repositories gets at least one
-   commit in each changed repository.
+1. **At least one commit per prompt per repository; split larger changes as needed.**
+   When a user prompt changes files, commit that prompt's authorized changes,
+   related tests/docs, and version updates. One cohesive commit is enough for a
+   small task. For a big change, make multiple cohesive commits at natural
+   boundaries, such as separate features, refactors, tests, or fixes. Commit
+   completed parts as the work progresses when useful. The per-prompt requirement
+   is a minimum, never a limit or a reason to combine unrelated changes.
+   Additional commits, including intermediate commits and follow-up commits for
+   fixes, review feedback, or CI failures, are allowed without asking for permission.
+   Research-only prompts need no empty commit. A prompt spanning repositories gets at least one commit in each changed repository.
 2. **Push completed work and follow-up fixes.** Push completed commits to the
    current branch's configured upstream before handing back, so another PC can
    resume. Batch edits rather than pushing after every edit or tool call. If CI
